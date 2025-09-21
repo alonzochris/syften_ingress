@@ -21,4 +21,3 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 Requests to `POST /syften-webhook` are validated and enqueued to Google Pub/Sub, logging both the raw payload and publish outcomes.
-# syften_ingress
