@@ -24,7 +24,7 @@ uv sync
 ## Run
 
 ```bash
-uv run python main.py
+uv run uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
-The service opens a streaming pull to Pub/Sub and delivers each item to Slack. Messages that fail to decode or validate are acknowledged and dropped; Slack delivery failures are retried via Pub/Sub nack/backoff.
+The service exposes `/healthz` for Cloud Run health checks and, on startup, opens a streaming pull to Pub/Sub to deliver each item to Slack. Messages that fail to decode or validate are acknowledged and dropped; Slack delivery failures are retried via Pub/Sub nack/backoff.

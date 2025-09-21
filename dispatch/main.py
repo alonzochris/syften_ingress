@@ -1,11 +1,15 @@
 import json
 import logging
 import os
+from concurrent.futures import CancelledError, ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
 
 from dotenv import load_dotenv
+from fastapi import FastAPI
 from google.cloud import pubsub_v1
+from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from pydantic import BaseModel, ValidationError
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -59,6 +63,10 @@ if not subscription_path:
             "Provide SYFTEN_PUBSUB_SUBSCRIPTION with the full path or set GOOGLE_CLOUD_PROJECT and "
             "SYFTEN_PUBSUB_SUBSCRIPTION_ID"
         )
+
+
+executor = ThreadPoolExecutor(max_workers=1)
+streaming_pull_future: Optional[StreamingPullFuture] = None
 
 
 def build_slack_message(item: Item) -> tuple[str, List[dict]]:
@@ -117,6 +125,8 @@ def build_slack_message(item: Item) -> tuple[str, List[dict]]:
         blocks.append({"type": "context", "elements": context_elements})
 
     return fallback_text, blocks
+
+
 def handle_message(message: pubsub_v1.subscriber.message.Message) -> None:
     try:
         payload = json.loads(message.data.decode("utf-8"))
@@ -143,18 +153,35 @@ def handle_message(message: pubsub_v1.subscriber.message.Message) -> None:
         logger.exception("Unexpected error while dispatching to Slack")
         message.nack()
 
-
-def main() -> None:
+def start_streaming_pull() -> None:
+    global streaming_pull_future
     streaming_pull_future = subscriber_client.subscribe(subscription_path, callback=handle_message)
     logger.info("Listening for messages on %s", subscription_path)
     try:
         streaming_pull_future.result()
-    except KeyboardInterrupt:
-        streaming_pull_future.cancel()
-        streaming_pull_future.result()
+    except CancelledError:
+        logger.info("Streaming pull for %s cancelled", subscription_path)
+    except Exception:
+        logger.exception("Streaming pull for %s terminated unexpectedly", subscription_path)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    executor.submit(start_streaming_pull)
+    try:
+        yield
     finally:
+        global streaming_pull_future
+        if streaming_pull_future:
+            streaming_pull_future.cancel()
+            streaming_pull_future = None
         subscriber_client.close()
+        executor.shutdown(wait=False)
 
 
-if __name__ == "__main__":
-    main()
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/healthz")
+async def healthcheck() -> dict:
+    return {"status": "ok"}
