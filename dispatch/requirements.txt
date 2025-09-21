@@ -1,0 +1,4 @@
+google-cloud-pubsub
+slack_sdk
+python-dotenv
+pydantic

@@ -1,0 +1,12 @@
+[project]
+name = "outshine-syften-dispatch"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "google-cloud-pubsub",
+    "slack_sdk",
+    "python-dotenv",
+    "pydantic",
+]
+
+[tool.uv]
