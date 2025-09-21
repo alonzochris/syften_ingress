@@ -1,23 +1,32 @@
 # Outshine Syften Webhook
 
-## Environment
+This repository houses multiple services that integrate with the Syften webhook pipeline. The current implementation includes the ingest service (under `ingest/`) that accepts webhook payloads and publishes validated items to Google Pub/Sub. Additional services, such as the dispatcher, can live alongside it (for example, under `dispatch/`).
 
-Set one of the following:
-- `SYFTEN_PUBSUB_TOPIC` with the full Pub/Sub topic path (`projects/<project>/topics/<topic>`)
-- `GOOGLE_CLOUD_PROJECT` and `SYFTEN_PUBSUB_TOPIC_ID` to build the topic path at runtime
+## Repository Layout
 
-Values can be provided via shell exports or stored in a `.env` file loaded at startup. The application uses the default Google credentials available in the environment.
+- `ingest/` – FastAPI webhook for receiving Syften items and enqueueing them to Pub/Sub. Contains its own Dockerfile, service-specific README, and configuration assets.
+- `dispatch/` – Placeholder directory for the upcoming Slack dispatcher service.
+- `pyproject.toml`, `uv.lock` – Shared dependency definitions managed through `uv` for all services.
 
-## Setup
+## Common Workflow
 
-1. Ensure [uv](https://github.com/astral-sh/uv) is installed locally or available in the container.
-2. Run `uv venv` (already created as `.venv`) and `uv sync` to install dependencies.
-3. Activate the environment with `source .venv/bin/activate` when working interactively.
-
-## Local Run
+Install dependencies with uv:
 
 ```bash
-uv run uvicorn main:app --host 0.0.0.0 --port 8000
+uv venv
+uv sync
 ```
 
-Requests to `POST /syften-webhook` are validated and enqueued to Google Pub/Sub, logging both the raw payload and publish outcomes.
+Run individual services from the repository root, e.g. the ingest service:
+
+```bash
+uv run uvicorn ingest.main:app --host 0.0.0.0 --port 8000
+```
+
+Build service containers with their local Dockerfiles, for example:
+
+```bash
+docker build -f ingest/Dockerfile .
+```
+
+Add new services in dedicated subdirectories and reuse the shared tooling as needed.
