@@ -6,27 +6,23 @@ This repository houses multiple services that integrate with the Syften webhook 
 
 - `ingest/` – FastAPI webhook for receiving Syften items and enqueueing them to Pub/Sub. Contains its own Dockerfile, service-specific README, and configuration assets.
 - `dispatch/` – Placeholder directory for the upcoming Slack dispatcher service.
-- `pyproject.toml`, `uv.lock` – Shared dependency definitions managed through `uv` for all services.
 
-## Common Workflow
+Each service owns its dependencies and container configuration inside its directory so they can be built and deployed independently.
 
-Install dependencies with uv:
+## Working on the Ingest Service
 
 ```bash
+cd ingest
 uv venv
 uv sync
+uv run uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Run individual services from the repository root, e.g. the ingest service:
+Build the ingest container (local example):
 
 ```bash
-uv run uvicorn ingest.main:app --host 0.0.0.0 --port 8000
+cd ingest
+docker build -t ingest-service .
 ```
 
-Build service containers with their local Dockerfiles, for example:
-
-```bash
-docker build -f ingest/Dockerfile .
-```
-
-Add new services in dedicated subdirectories and reuse the shared tooling as needed.
+Add new services in dedicated subdirectories with their own dependency manifests and Dockerfiles.
